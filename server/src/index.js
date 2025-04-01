@@ -1,7 +1,8 @@
-const http = require('http');
-const app = require('./app');
-const config = require('./config');
-const { createWebSocketServer } = require('./services/websocketService');
+const http = require("http");
+const app = require("./app");
+const config = require("./config");
+const { createWebSocketServer } = require("./services/websocketService");
+const { startLogPusher } = require("./utils/testLogPusher");
 
 const PORT = config.server.port;
 const HOST = config.server.host;
@@ -18,8 +19,12 @@ server.listen(PORT, () => {
 ===============================================
   服务器运行在 http://${HOST}:${PORT}
   WebSocket 服务已启动
+  SSE 日志服务已启动
   环境: ${config.env}
   时间: ${new Date().toLocaleString()}
 ===============================================
   `);
-}); 
+
+  // 启动日志推送服务
+  startLogPusher();
+});

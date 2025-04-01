@@ -1,7 +1,7 @@
 export const styles = {
   websocketDemo: {
     width: '100%',
-    maxWidth: '800px',
+    maxWidth: '1800px',
     margin: '0 auto',
     padding: '20px',
     fontFamily: 'Arial, sans-serif',
@@ -12,6 +12,22 @@ export const styles = {
 
   connectionControls: {
     marginBottom: '20px',
+    padding: '15px',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '8px',
+    border: '1px solid #e9ecef',
+  },
+
+  panelsContainer: {
+    display: 'flex',
+    gap: '20px',
+    marginBottom: '20px',
+    flexWrap: 'wrap' as const,
+  },
+
+  panel: {
+    flex: '1 1 calc(50% - 10px)',
+    minWidth: '300px',
     padding: '15px',
     backgroundColor: '#f8f9fa',
     borderRadius: '8px',
