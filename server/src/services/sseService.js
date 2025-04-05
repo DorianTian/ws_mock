@@ -11,35 +11,38 @@ let isTerminated = false;
 function setupSSE(req, res) {
   // 如果服务已终止，拒绝新连接
   if (isTerminated) {
-    res.writeHead(503, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'SSE service has been terminated' }));
+    res.writeHead(503, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "SSE service has been terminated" }));
     return;
   }
-  
+
   const clientId = Date.now();
-  
+
   // Set headers for SSE
   res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*'
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "Access-Control-Allow-Origin": "*",
   });
-  
+
   // Send initial connection message
-  sendEvent(res, 'connection', { 
-    message: 'SSE connection established',
+  sendEvent(res, "connection", {
+    message: "SSE connection established",
     clientId,
     isPushingEnabled,
-    isTerminated
+    isTerminated,
   });
-  
+
   // Store client connection
   clients.set(clientId, res);
   console.log(`SSE connection established: ID ${clientId}`);
-  
+
   // Handle client disconnect
-  req.on('close', () => {
+  req.on("close", () => {
+    const { stopLogPusher } = require("../utils/testLogPusher");
+
+    stopLogPusher();
     clients.delete(clientId);
     console.log(`SSE client ${clientId} disconnected`);
   });
@@ -55,22 +58,24 @@ function sendEvent(client, event, data) {
 function pushLog(logType, logMessage) {
   // 如果服务已终止或消息推送已关闭，则不推送
   if (isTerminated || !isPushingEnabled) {
-    const reason = isTerminated ? 'service terminated' : 'pushing disabled';
+    const reason = isTerminated ? "service terminated" : "pushing disabled";
     console.log(`Log push skipped (${reason}): ${logType} - ${logMessage}`);
     return 0;
   }
-  
+
   const logData = {
     type: logType,
     message: logMessage,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
-  
+
   clients.forEach((client) => {
-    sendEvent(client, 'log', logData);
+    sendEvent(client, "log", logData);
   });
-  
-  console.log(`Log pushed to ${clients.size} clients: ${logType} - ${logMessage}`);
+
+  console.log(
+    `Log pushed to ${clients.size} clients: ${logType} - ${logMessage}`
+  );
   return clients.size; // Return number of clients that received the log
 }
 
@@ -78,21 +83,23 @@ function pushLog(logType, logMessage) {
 function pushLogToClient(clientId, logType, logMessage) {
   // 如果服务已终止或消息推送已关闭，则不推送
   if (isTerminated || !isPushingEnabled) {
-    const reason = isTerminated ? 'service terminated' : 'pushing disabled';
-    console.log(`Log push to client ${clientId} skipped (${reason}): ${logType} - ${logMessage}`);
+    const reason = isTerminated ? "service terminated" : "pushing disabled";
+    console.log(
+      `Log push to client ${clientId} skipped (${reason}): ${logType} - ${logMessage}`
+    );
     return false;
   }
-  
+
   const client = clients.get(clientId);
   if (!client) return false;
-  
+
   const logData = {
     type: logType,
     message: logMessage,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
-  
-  sendEvent(client, 'log', logData);
+
+  sendEvent(client, "log", logData);
   console.log(`Log pushed to client ${clientId}: ${logType} - ${logMessage}`);
   return true;
 }
@@ -106,29 +113,29 @@ function getConnectedClients() {
 function togglePushing(enabled) {
   // 如果服务已终止，则不允许切换状态
   if (isTerminated) {
-    console.log('Cannot toggle pushing: service is terminated');
+    console.log("Cannot toggle pushing: service is terminated");
     return false;
   }
-  
+
   if (enabled !== undefined) {
     isPushingEnabled = !!enabled;
   } else {
     isPushingEnabled = !isPushingEnabled;
   }
-  
+
   // 通知所有客户端推送状态已改变
   const statusMessage = {
-    type: 'status',
+    type: "status",
     isPushingEnabled,
-    message: isPushingEnabled ? '日志推送已启用' : '日志推送已暂停',
-    timestamp: new Date().toISOString()
+    message: isPushingEnabled ? "日志推送已启用" : "日志推送已暂停",
+    timestamp: new Date().toISOString(),
   };
-  
+
   clients.forEach((client) => {
-    sendEvent(client, 'push_status', statusMessage);
+    sendEvent(client, "push_status", statusMessage);
   });
-  
-  console.log(`Message pushing ${isPushingEnabled ? 'enabled' : 'disabled'}`);
+
+  console.log(`Message pushing ${isPushingEnabled ? "enabled" : "disabled"}`);
   return isPushingEnabled;
 }
 
@@ -144,51 +151,51 @@ function getPushingStatus() {
  */
 function terminateService() {
   if (isTerminated) {
-    console.log('SSE service is already terminated');
+    console.log("SSE service is already terminated");
     return 0;
   }
-  
+
   // 标记服务为已终止
   isTerminated = true;
-  
+
   // 向所有客户端发送终止通知
   const terminationMessage = {
-    type: 'termination',
-    message: '日志服务已终止，连接将被关闭',
-    timestamp: new Date().toISOString()
+    type: "termination",
+    message: "日志服务已终止，连接将被关闭",
+    timestamp: new Date().toISOString(),
   };
-  
+
   clients.forEach((client, clientId) => {
     try {
       // 发送终止通知
-      sendEvent(client, 'service_terminated', terminationMessage);
-      
+      sendEvent(client, "service_terminated", terminationMessage);
+
       // 尝试结束响应
-      if (client.end && typeof client.end === 'function') {
+      if (client.end && typeof client.end === "function") {
         client.end();
-      } else if (client.destroy && typeof client.destroy === 'function') {
+      } else if (client.destroy && typeof client.destroy === "function") {
         client.destroy();
       }
     } catch (error) {
       console.error(`Error terminating client ${clientId}:`, error);
     }
   });
-  
+
   const clientCount = clients.size;
-  
+
   // 清空客户端列表
   clients.clear();
-  
+
   // 尝试停止日志推送服务
   try {
-    const logPusher = require('../utils/testLogPusher');
-    if (logPusher && typeof logPusher.stopLogPusher === 'function') {
+    const logPusher = require("../utils/testLogPusher");
+    if (logPusher && typeof logPusher.stopLogPusher === "function") {
       logPusher.stopLogPusher();
     }
   } catch (error) {
-    console.error('Failed to stop log pusher:', error);
+    console.error("Failed to stop log pusher:", error);
   }
-  
+
   console.log(`SSE service terminated, ${clientCount} connections closed`);
   return clientCount;
 }
@@ -200,25 +207,25 @@ function terminateService() {
  */
 function restartService() {
   if (!isTerminated) {
-    console.log('Cannot restart: SSE service is not terminated');
+    console.log("Cannot restart: SSE service is not terminated");
     return false;
   }
-  
+
   // 重置服务状态
   isTerminated = false;
   isPushingEnabled = true;
-  
+
   // 尝试重启日志推送服务
   try {
-    const logPusher = require('../utils/testLogPusher');
-    if (logPusher && typeof logPusher.startLogPusher === 'function') {
+    const logPusher = require("../utils/testLogPusher");
+    if (logPusher && typeof logPusher.startLogPusher === "function") {
       logPusher.startLogPusher();
     }
   } catch (error) {
-    console.error('Failed to restart log pusher:', error);
+    console.error("Failed to restart log pusher:", error);
   }
-  
-  console.log('SSE service restarted and ready to accept connections');
+
+  console.log("SSE service restarted and ready to accept connections");
   return true;
 }
 
@@ -239,5 +246,5 @@ module.exports = {
   getPushingStatus,
   terminateService,
   restartService,
-  getTerminationStatus
+  getTerminationStatus,
 };

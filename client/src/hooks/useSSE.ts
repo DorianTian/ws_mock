@@ -212,6 +212,7 @@ export const useSSE = ({ addMessage }: UseSSEProps) => {
   // Disconnect from SSE
   const disconnectFromSSE = useCallback(() => {
     if (sseRef.current) {
+      console.log('disconnectFromSSE', sseRef.current);
       sseRef.current.close();
       sseRef.current = null;
       setSseConnected(false);
